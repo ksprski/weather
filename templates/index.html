@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Weather</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h1::before {
+            content: "🌤 ";
+        }
+
+        /* Кнопки управления */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .controls form {
+            display: inline-block;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-update {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-update:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-remove {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-remove:hover {
+            background: #ee5a5a;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        /* Таблица */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .temp-cell {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .temp-hot {
+            color: #f5576c;
+        }
+
+        .temp-warm {
+            color: #f093fb;
+        }
+
+        .temp-cool {
+            color: #667eea;
+        }
+
+        .temp-cold {
+            color: #11998e;
+        }
+
+        .temp-na {
+            color: #999;
+        }
+
+        .date-cell {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Форма добавления */
+        .add-form {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .add-form h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .add-form h3::before {
+            content: "➕ ";
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .form-row input {
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-row input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row input[name="name"] {
+            flex: 2;
+            min-width: 150px;
+        }
+
+        .form-row input[type="number"] {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Пустой список */
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .empty-message::before {
+            content: "📭 ";
+            font-size: 2em;
+            display: block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>City Weather</h1>
+
+        <div class="controls">
+            <form action="/cities/update" method="post">
+                <button type="submit" class="btn-update">🔄 Update Weather</button>
+            </form>
+            <form action="/cities/reset" method="post">
+                <button type="submit" class="btn-reset">↩️ Reset List</button>
+            </form>
+        </div>
+
+        {% if cities %}
+        <table>
+            <thead>
+                <tr>
+                    <th>City</th>
+                    <th>Temperature</th>
+                    <th>Last Updated</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for city in cities %}
+                <tr>
+                    <td><strong>{{ city.name }}</strong></td>
+                    <td class="temp-cell {% if city.temperature is none %}temp-na{% elif city.temperature >= 30 %}temp-hot{% elif city.temperature >= 20 %}temp-warm{% elif city.temperature >= 10 %}temp-cool{% else %}temp-cold{% endif %}">
+                        {% if city.temperature is not none %}
+                            {{ "%.1f"|format(city.temperature) }} °C
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="date-cell">
+                        {% if city.updated_at %}
+                            {{ city.updated_at.strftime("%d.%m.%Y %H:%M") }} UTC
+                        {% else %}
+                            Not updated yet
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="/cities/remove/{{ city.id }}" method="post" style="display:inline;">
+                            <button type="submit" class="btn-remove">🗑 Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-message">
+            No cities in the list. Add a city or reset to defaults.
+        </div>
+
+        {% endif %}
+
+        <div class="add-form">
+            <h3>Add New City</h3>
+            <form action="/cities/add" method="post">
+                <div class="form-row">
+                    <input type="text" name="name" placeholder="City name" required>
+                    <input type="number" name="latitude" step="0.0001" placeholder="Latitude" required min="-90" max="90">
+                    <input type="number" name="longitude" step="0.0001" placeholder="Longitude" required min="-180" max="180">
+                    <button type="submit" class="btn-add">Add City</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
