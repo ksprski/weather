@@ -7,7 +7,6 @@ import aiohttp
 import asyncio
 import csv
 from datetime import datetime, timedelta
-from typing import Optional
 
 
 Base = declarative_base()
@@ -51,7 +50,7 @@ def get_db():
         db.close()
 
 
-async def fetch_weather(session: aiohttp.ClientSession, latitude: float, longitude: float) -> Optional[float]:
+async def fetch_weather(session: aiohttp.ClientSession, latitude: float, longitude: float):
     url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
     try:
         async with session.get(url) as response:
