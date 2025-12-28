@@ -9,13 +9,12 @@ import csv
 from datetime import datetime, timedelta
 from typing import Optional
 
-# ==================== МОДЕЛИ ДАННЫХ ====================
 
 Base = declarative_base()
 
 
 class City(Base):
-    """Основная таблица городов с погодой"""
+
     __tablename__ = "cities"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
@@ -26,7 +25,7 @@ class City(Base):
 
 
 class DefaultCity(Base):
-    """Таблица городов по умолчанию (для сброса)"""
+
     __tablename__ = "default_cities"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
@@ -34,23 +33,17 @@ class DefaultCity(Base):
     longitude = Column(Float)
 
 
-# ==================== НАСТРОЙКА БД ====================
-
 DATABASE_URL = "sqlite:///./cities.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
-# ==================== ИНИЦИАЛИЗАЦИЯ FASTAPI ====================
 
 app = FastAPI(title="Weather App")
 templates = Jinja2Templates(directory="templates")
 
 
-# ==================== ЗАВИСИМОСТИ ====================
-
 def get_db():
-    """Зависимость для безопасной работы с сессией БД"""
     db = SessionLocal()
     try:
         yield db
@@ -58,10 +51,7 @@ def get_db():
         db.close()
 
 
-# ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-
 async def fetch_weather(session: aiohttp.ClientSession, latitude: float, longitude: float) -> Optional[float]:
-    """Асинхронное получение температуры через API Open-Meteo"""
     url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
     try:
         async with session.get(url) as response:
@@ -74,7 +64,6 @@ async def fetch_weather(session: aiohttp.ClientSession, latitude: float, longitu
 
 
 async def fetch_all_weather(cities: list) -> list:
-    """Получение погоды для списка городов параллельно"""
     async with aiohttp.ClientSession() as session:
         tasks = [
             fetch_weather(session, city.latitude, city.longitude)
@@ -83,15 +72,13 @@ async def fetch_all_weather(cities: list) -> list:
         return await asyncio.gather(*tasks)
 
 
-# ==================== СОБЫТИЯ ПРИЛОЖЕНИЯ ====================
-
 
 @app.on_event("startup")
 def startup_event():
-    """Инициализация БД при запуске приложения"""
+
     db = SessionLocal()
     try:
-        # Заполняем таблицу default_cities из CSV (только если пуста)
+
         if not db.query(DefaultCity).first():
             try:
                 with open("cities.csv", "r", encoding="utf-8") as f:
@@ -107,7 +94,6 @@ def startup_event():
             except FileNotFoundError:
                 print("Warning: cities.csv not found")
 
-        # Заполняем таблицу cities из default_cities (только если пуста)
         if not db.query(City).first():
             default_cities = db.query(DefaultCity).all()
             for dc in default_cities:
@@ -124,12 +110,10 @@ def startup_event():
         db.close()
 
 
-# ==================== МАРШРУТЫ ====================
 
 @app.get("/")
 async def read_root(request: Request, db: Session = Depends(get_db)):
-    """Главная страница - отображение списка городов с погодой"""
-    # Сортировка по температуре (убывание), NULL значения в конце
+
     cities = db.query(City).order_by(
         City.temperature.desc().nullslast()
     ).all()
@@ -141,7 +125,7 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/cities/remove/{city_id}")
 async def remove_city(city_id: int, db: Session = Depends(get_db)):
-    """Удаление города из списка по ID"""
+
     city = db.query(City).filter(City.id == city_id).first()
     if city:
         db.delete(city)
@@ -151,11 +135,9 @@ async def remove_city(city_id: int, db: Session = Depends(get_db)):
 
 @app.post("/cities/reset")
 async def reset_cities(db: Session = Depends(get_db)):
-    """Сброс списка городов - загрузка из default_cities"""
-    # Очищаем текущий с��исок
+
     db.query(City).delete()
 
-    # Загружаем из таблицы по умолчанию
     default_cities = db.query(DefaultCity).all()
     for dc in default_cities:
         db.add(City(
@@ -171,21 +153,21 @@ async def reset_cities(db: Session = Depends(get_db)):
 
 @app.post("/cities/update")
 async def update_weather(db: Session = Depends(get_db)):
-    """Обновление температуры для всех городов (не чаще чем раз в 15 минут)"""
+
     cities = db.query(City).all()
     now = datetime.utcnow()
 
-    # Фильтруем города, которые нужно обновить
+
     cities_to_update = []
     for city in cities:
         if city.updated_at is None or (now - city.updated_at) >= timedelta(minutes=15):
             cities_to_update.append(city)
 
     if cities_to_update:
-        # Асинхронно получаем погоду для всех городов
+
         temperatures = await fetch_all_weather(cities_to_update)
 
-        # Обновляем данные в БД
+
         for city, temp in zip(cities_to_update, temperatures):
             if temp is not None:
                 city.temperature = temp
@@ -204,8 +186,7 @@ async def add_city(
     longitude: float = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Добавление нового города (без дубликатов)"""
-    # Проверка на дубликат по имени
+
     existing = db.query(City).filter(City.name == name).first()
     if not existing:
         city = City(
